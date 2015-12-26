@@ -1,0 +1,156 @@
+---
+title: "Training Manner Prediction"
+output: html_document
+---
+
+# Excercise
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. 
+These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, 
+to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, 
+but they rarely quantify how well they do it. The goal of this project will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. 
+They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+# The Data
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. 
+If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment. 
+
+# Objective
+The goal of this project is to predict how well they did the excercise. This is the "classe" variable in the training data set. Any of the other variables in the data set can be used to predict this.
+
+# Load required Libraries and set seed for random generator
+```{r}
+library(arm)
+library(caret)
+library(kernlab)
+library(randomForest)
+library(rpart)
+library(abind)
+library(klaR)
+library(rattle)
+set.seed(1234)
+```
+
+#Import Data
+Download the training and test data sets from the following URLs and load them into R.
+
+Training Data set - "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+
+Test Data set- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+```{r results='hide', message=FALSE, warning=FALSE}
+train <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!",""))
+test <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
+```
+
+# Pre-process Training Dataset
+1. Clearning out the near zero variables
+```{r}
+nearzero <- nearZeroVar(train, saveMetrics=TRUE)
+train <- train[, !nearzero$nzv]
+```
+
+2. Let us take only the variables that have atleast 50% of the values.
+```{r}
+canRemove <- sapply(colnames(train), function(x) if (sum(is.na(train[, x]))>0.50*nrow(train)) {return (TRUE)}
+else{
+return(FALSE)})
+train <- train[, !canRemove]
+```
+
+3. Remove the variables that are not required for the prediction activity.
+```{r}
+train <- train[, -(1:6)]
+```
+
+4. Variables in the training data set.
+```{r}
+names(train)
+```
+
+# Find Correlation
+Checking the variables that are correlated.
+```{r}
+hcorr <- caret::findCorrelation(cor(train[, -53]), cutoff=0.8)
+names(train)[hcorr]
+```
+
+# Models and Cross Validation
+Let us estimate the following models.
+
+1. Random Forest
+
+2. Neural Network
+
+3. Logit Boosted Model
+
+4. Support Vector Machine
+
+5. Bayes Generalized Linear Model
+
+Inorder to reduce out of sample errors and to avoid overfitting, let us use a 7 fold cross validation.
+
+```{r}
+tcontrol <- trainControl(method="cv", number = 7, verboseIter=FALSE , preProcOptions="pca", allowParallel=TRUE)
+
+randomForest <- train(classe ~ ., data = train, method = "rf", trControl= tcontrol)
+nn <- train(classe ~ ., data = train, method = "nnet", trControl= tcontrol, verbose=FALSE)
+logitboost <- train(classe ~ ., data = train, method = "LogitBoost", trControl= tcontrol)
+svmR <- train(classe ~ ., data = train, method = "svmRadial", trControl= tcontrol)
+svmL <- train(classe ~ ., data = train, method = "svmLinear", trControl= tcontrol)
+bayesglm <- train(classe ~ ., data = train, method = "bayesglm", trControl= tcontrol)
+```
+
+# Compare the models
+Let us compare the Accuracy and Kappa of these models.
+
+```{r}
+modelName <- c("Random Forest","Neural Network", "LogitBoost", "SVM (radial)", "SVM (linear)", "Bayes GLM")
+accuracy <- c(max(randomForest$results$Accuracy),
+              max(nn$results$Accuracy),
+              max(logitboost$results$Accuracy),
+              max(svmR$results$Accuracy),
+              max(svmL$results$Accuracy),
+              max(bayesglm$results$Accuracy))
+kappa <- c(max(randomForest$results$Kappa),
+              max(nn$results$Kappa),
+              max(logitboost$results$Kappa),
+              max(svmR$results$Kappa),
+              max(svmL$results$Kappa),
+              max(bayesglm$results$Kappa))
+perf <- cbind(modelName, accuracy, kappa)
+knitr::kable(perf)
+```
+
+By looking at the above numbers, Random Forest and SVM (radial) seems to give the best accuracy.
+
+# Out of Sample Error
+As we have done cross validation over different test sets, the in sample error obtained can provide a better estimate of the out of sample error.
+
+# Prediction
+Let us predict on the test set using the Random Forest model as it has the highest accuracy.
+
+```{r}
+rfPred <- predict(randomForest, test)
+```
+
+# Generate files for submission
+```{r}
+setwd("/home/dkumares/git_code/prac_ml/ExcerciseManner/results")
+pml_write_files = function(x){
+        n = length(x)
+        for(i in 1:n){
+                filename = paste0("problem_id_",i,".txt")
+                write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+        }
+}
+
+pml_write_files(rfPred)
+```

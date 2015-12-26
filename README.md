@@ -1,4 +1,4 @@
-# ExcerciseManner
+# Excercise
 Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. 
 These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, 
 to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, 
@@ -18,4 +18,4 @@ The data for this project come from this source: http://groupware.les.inf.puc-ri
 If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment. 
 
 # Objective
-The goal of this project is to predict how well they did the excercise. This is the "classe" variable in the training data set.
+The goal of this project is to predict how well they did the excercise. This is the "classe" variable in the training data set. Any of the other variables in the data set can be used to predict this.
